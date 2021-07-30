@@ -1,10 +1,15 @@
 #pragma once
 
-#include <log/logger.h>
-#include <server/types.hpp>
-#include <common/util.hpp>
+#include <fstream>
+#include <iterator>
+#include <string>
+#include <vector>
+#include <functional>
+#include <cstring>
+#include <cassert>
+#include <cmath>
 
-namespace Decoder {
+namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
 static const uint8_t  HEADER_SIZE     = 4;
 /**
@@ -33,7 +38,7 @@ struct File
  * Does most of the heavy lifting
  */
 using ReceiveFn      = std::function<void(uint8_t *data, int32_t size, const std::string&)>;
-using FileCallbackFn = std::function<void(int, int, uint8_t *, size_t)>;
+using FileCallbackFn = std::function<void(int, uint8_t *, size_t)>;
 class Decoder
 {
 public:
@@ -135,8 +140,6 @@ public:
     std::memcpy(packet_buffer + packet_buffer_offset, data, bytes_to_copy);
     packet_buffer_offset    += bytes_to_copy;
 
-    KLOG("Packet buffer offset is {}", packet_buffer_offset);
-
     assert((packet_buffer_offset <= MAX_PACKET_SIZE));
 
     if (packet_received)
@@ -226,12 +229,8 @@ public:
   : m_decoder(new Decoder(id, name,
     [this, id, callback_fn](uint8_t*&& data, int size, std::string filename)
     {
-      if (size > 0) {
-        if (!filename.empty())
-          FileUtils::saveFile(data, size, filename);
-        else
-          callback_fn(id, FILE_HANDLE__SUCCESS, std::move(data), size);
-      }
+      if (size)
+        callback_fn(id, std::move(data), size);
     },
     keep_header))
   {
