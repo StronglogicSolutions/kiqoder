@@ -12,18 +12,14 @@
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
 static const uint8_t  HEADER_SIZE     = 4;
-/**
- * FileHandler
- *
- * Responsible for receiving and decoding file data for a client
- */
+
 class FileHandler {
 public:
 
 /**
 * File
 *
-* What we make here
+* @struct
 */
 struct File
 {
@@ -33,16 +29,21 @@ struct File
 };
 
 /**
- * Decoder
+ * Decoder class
  *
- * Does most of the heavy lifting
+ * @class
+ *
+ * Does the heavy lifting
+ *
  */
 using ReceiveFn      = std::function<void(uint8_t *data, int32_t size)>;
 using FileCallbackFn = std::function<void(int32_t, uint8_t *, size_t)>;
 class Decoder
 {
 public:
-  /**
+ /**
+  * Default constructor
+  *
   * @constructor
   */
   Decoder(ReceiveFn file_callback_fn_ptr,
@@ -108,16 +109,16 @@ public:
 
   void processPacketBuffer(uint8_t* data, uint32_t size)
   {
-    uint32_t bytes_to_finish        {}; // for current packet
-    uint32_t remaining              {}; // after this function completes
-    uint32_t bytes_to_copy          {}; // into packet buffer
+    uint32_t bytes_to_finish        {}; // current packet
+    uint32_t remaining              {}; // after this call
+    uint32_t bytes_to_copy          {}; // to packet buffer
     uint32_t packet_size            {};
     bool     packet_received        {};
     bool     is_last_packet = index == (total_packets);
 
-    if (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size)) // 1st chunk
-      bytes_to_finish = packet_size = (m_keep_header) ?
-        MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
+    if (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size))
+      bytes_to_finish = packet_size = (m_keep_header) ?        // 1st chunk
+                                        MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
     else
     if (is_last_packet)
     {
@@ -125,7 +126,7 @@ public:
       bytes_to_finish = packet_size - packet_buffer_offset;
     }
     else
-    { // All other chunks
+    {                                                          // All other chunks
       packet_size     = MAX_PACKET_SIZE;
       bytes_to_finish = MAX_PACKET_SIZE - packet_buffer_offset;
     }
@@ -166,14 +167,15 @@ public:
    */
   void processPacket(uint8_t* data, uint32_t size)
   {
-    bool     is_first_packet = (index == 0);
     uint32_t process_index{0};
+    bool     is_first_packet = (index == 0);
 
     while (size)
     {
-      uint32_t size_to_read = size <= MAX_PACKET_SIZE ? size : MAX_PACKET_SIZE;
+      uint32_t size_to_read = size <= MAX_PACKET_SIZE ?
+                                                        size : MAX_PACKET_SIZE;
 
-      if (is_first_packet && packet_buffer_offset == 0 && file_buffer_offset == 0)
+      if (is_first_packet && !packet_buffer_offset && !file_buffer_offset)   // First iteration
       {
         file_size     = (m_keep_header) ?
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) + HEADER_SIZE + 1 :
@@ -184,7 +186,8 @@ public:
         if (nullptr == packet_buffer)
           packet_buffer = new uint8_t[MAX_PACKET_SIZE];
 
-        file_buffer_offset    = 0;
+        file_buffer_offset = 0;
+
         if (m_keep_header)
           processPacketBuffer(data, size_to_read);
         else
@@ -212,6 +215,7 @@ public:
   };
 
   /**
+   * Default constructor
    * @constructor
    */
   FileHandler(FileCallbackFn callback_fn,
@@ -226,7 +230,7 @@ public:
   {}
 
   /**
-   * Move constructor
+   * Move&& constructor
    * @constructor
    */
   FileHandler(FileHandler&& f)
@@ -236,7 +240,7 @@ public:
   }
 
   /**
-   * Copy constructor
+   * Copy& constructor
    * @constructor
    */
 
@@ -280,6 +284,11 @@ public:
     delete m_decoder;
   }
 
+  /**
+   * setID
+   *
+   * @param id
+   */
   void setID(uint32_t id)
   {
     m_id = id;
@@ -288,8 +297,8 @@ public:
   /**
    * processPacket
    *
-   * @param[in] {uint8_t*} `data` A pointer to the first memory address of a
-   * @param[in] {uint32_t} `size` The size of the packet, in bytes
+   * @param[in] {uint8_t*} `data`
+   * @param[in] {uint32_t} `size`
    */
   void processPacket(uint8_t *data, uint32_t size)
   {
