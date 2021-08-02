@@ -37,18 +37,16 @@ struct File
  *
  * Does most of the heavy lifting
  */
-using ReceiveFn      = std::function<void(uint8_t *data, int32_t size, const std::string&)>;
-using FileCallbackFn = std::function<void(int, uint8_t *, size_t)>;
+using ReceiveFn      = std::function<void(uint8_t *data, int32_t size)>;
+using FileCallbackFn = std::function<void(int32_t, uint8_t *, size_t)>;
 class Decoder
 {
 public:
   /**
   * @constructor
   */
-  Decoder(int32_t            id,
-          const std::string& file_name,
-          ReceiveFn          file_callback_fn_ptr,
-          bool               keep_header)
+  Decoder(ReceiveFn file_callback_fn_ptr,
+          bool      keep_header)
   : file_buffer         (nullptr),
     packet_buffer       (nullptr),
     index               (0),
@@ -56,8 +54,6 @@ public:
     total_packets       (0),
     file_buffer_offset  (0),
     file_size           (0),
-    filename            (file_name),
-    m_id                (id),
     m_file_cb_ptr       (file_callback_fn_ptr),
     m_keep_header       (keep_header),
     m_header_size       (HEADER_SIZE)
@@ -157,7 +153,7 @@ public:
 
       if (is_last_packet)
       {
-        m_file_cb_ptr(std::move(file_buffer), file_size, filename);
+        m_file_cb_ptr(std::move(file_buffer), file_size);
         reset();
       }
     }
@@ -210,8 +206,6 @@ public:
     uint32_t    total_packets;
     uint32_t    file_buffer_offset;
     uint32_t    file_size;
-    std::string filename;
-    int32_t     m_id;
     ReceiveFn   m_file_cb_ptr;
     bool        m_keep_header;
     uint8_t     m_header_size;
@@ -220,22 +214,16 @@ public:
   /**
    * @constructor
    */
-  FileHandler(int32_t        id,
-              std::string    name,
-              uint8_t*       first_packet,
-              uint32_t       size,
-              FileCallbackFn callback_fn,
+  FileHandler(FileCallbackFn callback_fn,
               bool           keep_header = false)
-  : m_decoder(new Decoder(id, name,
-    [this, id, callback_fn](uint8_t*&& data, int size, std::string filename)
-    {
-      if (size)
-        callback_fn(id, std::move(data), size);
-    },
+  : m_decoder(new Decoder(
+      [this, callback_fn](uint8_t*&& data, int size)
+      {
+        if (size)
+          callback_fn(m_id, std::move(data), size);
+      },
     keep_header))
-  {
-    m_decoder->processPacket(first_packet, size);
-  }
+  {}
 
   /**
    * Move constructor
@@ -292,6 +280,11 @@ public:
     delete m_decoder;
   }
 
+  void setID(uint32_t id)
+  {
+    m_id = id;
+  }
+
   /**
    * processPacket
    *
@@ -304,6 +297,7 @@ public:
   }
 
  private:
+  int32_t  m_id;
   Decoder* m_decoder;
 };
 } // namespace Decoder
