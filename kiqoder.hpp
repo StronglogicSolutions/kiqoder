@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
+#include <QDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
@@ -36,8 +37,8 @@ struct File
  * Does the heavy lifting
  *
  */
-using ReceiveFn      = std::function<void(uint8_t *data, int32_t size)>;
-using FileCallbackFn = std::function<void(int32_t, uint8_t *, size_t)>;
+using ReceiveFn      = std::function<void(uint32_t, uint8_t*, int32_t)>;
+using FileCallbackFn = std::function<void(int32_t, uint8_t*, size_t)>;
 class Decoder
 {
 public:
@@ -72,6 +73,11 @@ public:
       file_buffer   = nullptr;
       packet_buffer = nullptr;
     }
+  }
+
+  void setID(uint32_t id)
+  {
+    m_id = id;
   }
 
   /**
@@ -154,7 +160,7 @@ public:
 
       if (is_last_packet)
       {
-        m_file_cb_ptr(std::move(file_buffer), file_size);
+        m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
         reset();
       }
     }
@@ -212,6 +218,7 @@ public:
     ReceiveFn   m_file_cb_ptr;
     bool        m_keep_header;
     uint8_t     m_header_size;
+    uint32_t    m_id;
   };
 
   /**
@@ -221,10 +228,10 @@ public:
   FileHandler(FileCallbackFn callback_fn,
               bool           keep_header = false)
   : m_decoder(new Decoder(
-      [this, callback_fn](uint8_t*&& data, int size)
+      [callback_fn](uint32_t id, uint8_t*&& data, int size)
       {
         if (size)
-          callback_fn(m_id, std::move(data), size);
+          callback_fn(id, std::move(data), size);
       },
     keep_header))
   {}
@@ -291,7 +298,7 @@ public:
    */
   void setID(uint32_t id)
   {
-    m_id = id;
+    m_decoder->setID(id);
   }
 
   /**
@@ -306,7 +313,6 @@ public:
   }
 
  private:
-  int32_t  m_id;
   Decoder* m_decoder;
 };
 } // namespace Decoder
