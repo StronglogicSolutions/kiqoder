@@ -102,7 +102,7 @@ public:
     index              = 0;
     total_packets      = 0;
     file_buffer_offset = 0;
-    file_size          = 0;
+//    file_size          = 0;
     clearPacketBuffer();
   }
 
@@ -137,7 +137,7 @@ public:
       bytes_to_finish = MAX_PACKET_SIZE - packet_buffer_offset;
     }
 
-    remaining               = (size - bytes_to_finish);
+    remaining               = (size < bytes_to_finish) ? (bytes_to_finish - size) : (size - bytes_to_finish); // this doesn't work if size is less
     packet_received         = (size >= bytes_to_finish);
     bytes_to_copy           = (packet_received) ? bytes_to_finish : size;
     std::memcpy(packet_buffer + packet_buffer_offset, data, bytes_to_copy);
@@ -157,11 +157,15 @@ public:
         std::memcpy(packet_buffer, (data + bytes_to_copy), remaining);
         packet_buffer_offset = packet_buffer_offset + remaining;
       }
-
+      else
       if (is_last_packet)
       {
         m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
         reset();
+
+        if (remaining)
+          qDebug() << "We have some remaining";
+//          processPacket(data + bytes_to_copy, size - bytes_to_copy);
       }
     }
   }
@@ -174,36 +178,62 @@ public:
   void processPacket(uint8_t* data, uint32_t size)
   {
     uint32_t process_index{0};
-    bool     is_first_packet = (index == 0);
+    int32_t  i{};
 
     while (size)
     {
-      uint32_t size_to_read = size <= MAX_PACKET_SIZE ?
-                                                        size : MAX_PACKET_SIZE;
+      bool     is_first_packet = (index == 0);
+      uint32_t size_to_read    = size <= MAX_PACKET_SIZE ? size : MAX_PACKET_SIZE;
 
       if (is_first_packet && !packet_buffer_offset && !file_buffer_offset)   // First iteration
+//      if (is_first_packet)   // First iteration
       {
-        file_size     = (m_keep_header) ?
+        uint32_t prev_size = file_size;
+                 file_size = (m_keep_header) ?
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) + HEADER_SIZE + 1 :
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) - HEADER_SIZE;
         total_packets = static_cast<uint32_t>(ceil(static_cast<double>(file_size / MAX_PACKET_SIZE)));
-        file_buffer   = new uint8_t[file_size];
+
+        if (prev_size >= file_size)
+          memset(file_buffer, 0, file_size);
+        else
+        {
+          if (file_buffer)
+            delete[] file_buffer;
+          file_buffer = new uint8_t[file_size];
+        }
+
+        if (file_size < size_to_read) // We need to account for header. Sometimes it's being disregarded
+          size_to_read = (file_size + HEADER_SIZE);
 
         if (nullptr == packet_buffer)
           packet_buffer = new uint8_t[MAX_PACKET_SIZE];
 
         file_buffer_offset = 0;
 
+        if (size_to_read < size)
+          qDebug() << "Spillover";
+
         if (m_keep_header)
           processPacketBuffer(data, size_to_read);
         else
-          processPacketBuffer(data + HEADER_SIZE, size_to_read - HEADER_SIZE);
+          processPacketBuffer((data + HEADER_SIZE), size_to_read - HEADER_SIZE);
       }
       else
-        processPacketBuffer((data + process_index), size_to_read);
+      {
+        size_to_read = (file_size < size_to_read) ? file_size : size_to_read;
+        processPacketBuffer((data + process_index), size_to_read); // TODO: why is this larger than file_size?
+      }
 
+//      if ((size_to_read != size) && is_first_packet)
+//      {
+//        size_to_read = (m_keep_header) ? size_to_read : (size_to_read + HEADER_SIZE);
+//        is_first_packet = false;
+//      }
       size          -= size_to_read;
       process_index += size_to_read;
+      i++;
+//      data          += size_to_read;
     }
   }
 
