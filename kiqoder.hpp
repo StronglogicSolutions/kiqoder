@@ -8,7 +8,6 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include <QDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
@@ -128,25 +127,16 @@ public:
 
   void processPacketBuffer(uint8_t* data, uint32_t size)
   {
-    QString data_copy{};
-    for (uint32_t i = 0; i < size; i++)
-      data_copy += static_cast<char>(data[i]);
-    qDebug() << "Broken into chunk";
-    qDebug() << data_copy;
+    uint32_t bytes_to_finish{}; // current packet
+    uint32_t remaining      {}; // after
+    uint32_t bytes_to_copy  {}; // packet buffer
+    uint32_t packet_size    {};
+    bool     packet_received{};
+    bool     is_first_packet = (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size));
+    bool     is_last_packet  = index == (total_packets);
 
-    uint32_t bytes_to_finish        {}; // current packet
-    uint32_t remaining              {}; // after this call
-    uint32_t bytes_to_copy          {}; // to packet buffer
-    uint32_t packet_size            {};
-    bool     packet_received        {};
-    bool     is_last_packet = index == (total_packets);
-
-    if (!is_last_packet && size < MAX_PACKET_SIZE)
-      qDebug() << "Weirdness";
-
-    if (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size))
-      bytes_to_finish = packet_size = (m_keep_header) ?        // 1st chunk
-                                        MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
+    if (is_first_packet)
+      bytes_to_finish = packet_size = (m_keep_header) ? MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
     else
     if (is_last_packet)
     {
@@ -154,7 +144,7 @@ public:
       bytes_to_finish = packet_size - packet_buffer_offset;
     }
     else
-    {                                                          // All other chunks
+    { // Other chunks
       packet_size     = MAX_PACKET_SIZE;
       bytes_to_finish = MAX_PACKET_SIZE - packet_buffer_offset;
     }
@@ -199,19 +189,15 @@ public:
    */
   void processPacket(uint8_t* data, uint32_t size)
   {
-    QString data_copy{};
-    for (uint32_t i = 0; i < size; i++)
-      data_copy += static_cast<char>(data[i]);
-    qDebug() << "Processing packet";
-    qDebug() << data_copy;
     uint32_t process_index{0};
 
     while (size)
     {
-      bool     is_first_packet = (index == 0);
+      bool     is_first_packet = (!index);
+      bool     is_first_chunk  = is_first_packet && !packet_buffer_offset && !file_buffer_offset;
       uint32_t size_to_read    = size <= MAX_PACKET_SIZE ? size : MAX_PACKET_SIZE;
 
-      if (is_first_packet && !packet_buffer_offset && !file_buffer_offset)   // First iteration
+      if (is_first_chunk)
       {
         uint32_t prev_size;
         prev_size     = file_size;
