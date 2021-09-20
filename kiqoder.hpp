@@ -136,8 +136,6 @@ public:
     const bool     is_first_packet = (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size));
     const bool     is_last_packet  = index == (total_packets);
 
-    if (nullptr == packet_buffer && packet_buffer_offset)
-      qDebug() << "Weird situation";
     if (is_first_packet)
       bytes_to_finish = packet_size = (m_keep_header) ? MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
     else
@@ -242,7 +240,6 @@ public:
     bool        m_keep_header;
     uint8_t     m_header_size;
     uint32_t    m_id;
-    uint32_t    m_last_size;
   };
 
   /**
