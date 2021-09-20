@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
+#include <QtDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
@@ -127,14 +128,16 @@ public:
 
   void processPacketBuffer(uint8_t* data, uint32_t size)
   {
-    uint32_t bytes_to_finish{}; // current packet
-    uint32_t remaining      {}; // after
-    uint32_t bytes_to_copy  {}; // packet buffer
-    uint32_t packet_size    {};
-    bool     packet_received{};
-    bool     is_first_packet = (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size));
-    bool     is_last_packet  = index == (total_packets);
+          uint32_t bytes_to_finish{}; // current packet
+          int32_t  remaining      {}; // after
+          uint32_t bytes_to_copy  {}; // packet buffer
+          uint32_t packet_size    {};
+          bool     packet_received{};
+    const bool     is_first_packet = (!index && !packet_buffer_offset && file_size > (MAX_PACKET_SIZE - m_header_size));
+    const bool     is_last_packet  = index == (total_packets);
 
+    if (nullptr == packet_buffer && packet_buffer_offset)
+      qDebug() << "Weird situation";
     if (is_first_packet)
       bytes_to_finish = packet_size = (m_keep_header) ? MAX_PACKET_SIZE : MAX_PACKET_SIZE - m_header_size;
     else
@@ -168,12 +171,15 @@ public:
       {
         m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
         reset();
-        if (remaining)
-          processPacket(data + bytes_to_copy, remaining);
+
       }
-      else
+
+      if (remaining > HEADER_SIZE)
       {
-        if (remaining)
+        const bool last_packet_complete = ((index == (total_packets - 1)) && static_cast<uint32_t>(remaining) == (file_size - file_buffer_offset));
+        if (is_last_packet || last_packet_complete)
+          processPacket((data + bytes_to_copy), remaining);
+        else
         {
           std::memcpy(packet_buffer, (data + bytes_to_copy), remaining);
           packet_buffer_offset = packet_buffer_offset + remaining;
@@ -193,8 +199,7 @@ public:
 
     while (size)
     {
-      bool     is_first_packet = (!index);
-      bool     is_first_chunk  = is_first_packet && !packet_buffer_offset && !file_buffer_offset;
+      bool     is_first_chunk  = (!index) && !packet_buffer_offset && !file_buffer_offset;
       uint32_t size_to_read    = size <= MAX_PACKET_SIZE ? size : MAX_PACKET_SIZE;
 
       if (is_first_chunk)
@@ -237,6 +242,7 @@ public:
     bool        m_keep_header;
     uint8_t     m_header_size;
     uint32_t    m_id;
+    uint32_t    m_last_size;
   };
 
   /**
