@@ -174,7 +174,7 @@ public:
 
       if (remaining > HEADER_SIZE)
       {
-        const bool last_packet_complete = ((index == (total_packets - 1)) && static_cast<uint32_t>(remaining) == (file_size - file_buffer_offset));
+        const bool last_packet_complete = ((index == total_packets) && static_cast<uint32_t>(remaining) == (file_size - file_buffer_offset));
         if (is_last_packet || last_packet_complete)
           processPacket((data + bytes_to_copy), remaining);
         else
