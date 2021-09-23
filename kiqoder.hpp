@@ -8,7 +8,6 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include <QtDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
@@ -215,9 +214,8 @@ public:
 
         file_buffer_offset = 0;
 
-        if (m_keep_header)
-          processPacketBuffer(data, size_to_read);
-        else
+        (m_keep_header) ?
+          processPacketBuffer(data, size_to_read) :
           processPacketBuffer(data + HEADER_SIZE, size_to_read - HEADER_SIZE);
       }
       else
