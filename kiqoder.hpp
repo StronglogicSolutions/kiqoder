@@ -87,7 +87,8 @@ public:
 
   void clearPacketBuffer()
   {
-    memset(packet_buffer, 0, MAX_PACKET_SIZE);
+    if (packet_buffer)
+      memset(packet_buffer, 0, MAX_PACKET_SIZE);
     packet_buffer_offset = 0;
   }
 
@@ -168,7 +169,6 @@ public:
       {
         m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
         reset();
-
       }
 
       if (remaining > HEADER_SIZE)
