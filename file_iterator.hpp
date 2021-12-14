@@ -72,7 +72,13 @@ static std::vector<T> PrepareBuffer (std::vector<T>&& data)
   buffer.emplace_back((bytes      ) & 0xFF);
   buffer.insert(buffer.end(), std::make_move_iterator(data.begin()), std::make_move_iterator(data.end()));
   return buffer;
-};
+}
+
+uint32_t GetBytesRead() const
+{
+  return m_bytes_read;
+}
+
 struct PacketWrapper
 {
 PacketWrapper(T* ptr_, uint32_t size_)
