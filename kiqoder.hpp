@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
+#include <QDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
@@ -173,7 +174,7 @@ public:
 
       if (remaining > HEADER_SIZE)
       {
-        const bool last_packet_complete = ((index == total_packets) && static_cast<uint32_t>(remaining) == (file_size - file_buffer_offset));
+        const bool last_packet_complete = ((index == total_packets) && static_cast<uint32_t>(remaining) >= (file_size - file_buffer_offset));
         if (is_last_packet || last_packet_complete)
           processPacket((data + bytes_to_copy), remaining);
         else
