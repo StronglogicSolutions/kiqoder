@@ -8,7 +8,6 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
-#include <QDebug>
 
 namespace Kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
