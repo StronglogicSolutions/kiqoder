@@ -202,7 +202,6 @@ public:
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) + HEADER_SIZE + 1 :
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) - HEADER_SIZE;
         total_packets = static_cast<uint32_t>(ceil(static_cast<double>(file_size / MAX_PACKET_SIZE)));
-
         file_buffer   = PrepareBuffer(file_buffer, file_size);
 
         if (nullptr == packet_buffer)
