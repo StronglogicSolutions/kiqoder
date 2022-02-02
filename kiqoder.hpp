@@ -206,7 +206,7 @@ public:
         file_buffer   = PrepareBuffer(file_buffer, file_size);
 
         if (nullptr == packet_buffer)
-        packet_buffer = new uint8_t[MAX_PACKET_SIZE];
+          packet_buffer = new uint8_t[MAX_PACKET_SIZE];
         file_buffer_offset = 0;
 
         (m_keep_header) ?
