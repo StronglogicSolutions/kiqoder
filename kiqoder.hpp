@@ -36,7 +36,7 @@ struct File
  * Does the heavy lifting
  *
  */
-using ReceiveFn      = std::function<void(uint32_t, uint8_t*, int32_t)>;
+using ReceiveFn      = std::function<void(uint32_t, uint8_t*, size_t)>;
 using FileCallbackFn = std::function<void(int32_t, uint8_t*, size_t)>;
 class Decoder
 {
@@ -164,13 +164,13 @@ public:
 
       if (is_last_packet)
       {
-        m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
+        m_file_cb_ptr(m_id, file_buffer, file_size);
         reset();
       }
 
       if (remaining > HEADER_SIZE)
       {
-        const bool last_packet_complete = ((index == total_packets) && static_cast<uint32_t>(remaining) == (file_size - file_buffer_offset));
+        const bool last_packet_complete = ((index == total_packets) && static_cast<uint32_t>(remaining) >= (file_size - file_buffer_offset));
         if (is_last_packet || last_packet_complete)
           processPacket((data + bytes_to_copy), remaining);
         else
@@ -244,10 +244,10 @@ public:
   FileHandler(FileCallbackFn callback_fn,
               bool           keep_header = false)
   : m_decoder(new Decoder(
-      [callback_fn](uint32_t id, uint8_t*&& data, int size)
+      [callback_fn](uint32_t id, uint8_t* data, size_t size)
       {
         if (size)
-          callback_fn(id, std::move(data), size);
+          callback_fn(id, data, size);
       },
     keep_header))
   {}
