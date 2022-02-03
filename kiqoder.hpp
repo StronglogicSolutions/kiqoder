@@ -36,7 +36,7 @@ struct File
  * Does the heavy lifting
  *
  */
-using ReceiveFn      = std::function<void(uint32_t, uint8_t*, int32_t)>;
+using ReceiveFn      = std::function<void(uint32_t, uint8_t*, size_t)>;
 using FileCallbackFn = std::function<void(int32_t, uint8_t*, size_t)>;
 class Decoder
 {
@@ -65,6 +65,9 @@ public:
  */
   ~Decoder()
   {
+    if (m_buffers.size())
+      for (auto&& buffer : m_buffers) delete[] buffer;
+
     if (file_buffer != nullptr)
     {
       delete[] file_buffer;
@@ -113,17 +116,11 @@ public:
    * @param[in] {uint32_t} `size` The number of bytes to process
    */
 
-  static uint8_t* PrepareBuffer(uint8_t* ptr, uint32_t prev_size, uint32_t new_size)
+  uint8_t* PrepareBuffer(uint8_t* ptr, uint32_t new_size)
   {
-    if (prev_size >= new_size)
-      memset(ptr, 0, new_size);
-    else
-    {
-      if (ptr)
-        delete[] ptr;
-      ptr = new uint8_t[new_size];
-    }
-    return ptr;
+    if (ptr)
+      m_buffers.push_back(ptr);
+    return new uint8_t[new_size];
   }
 
   void processPacketBuffer(uint8_t* data, uint32_t size)
@@ -167,7 +164,7 @@ public:
 
       if (is_last_packet)
       {
-        m_file_cb_ptr(m_id, std::move(file_buffer), file_size);
+        m_file_cb_ptr(m_id, file_buffer, file_size);
         reset();
       }
 
@@ -201,17 +198,14 @@ public:
 
       if (is_first_chunk)
       {
-        uint32_t prev_size;
-        prev_size     = file_size;
         file_size     = (m_keep_header) ?
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) + HEADER_SIZE + 1 :
           int(data[0] << 24 | data[1] << 16 | data[2] << 8 | data[3]) - HEADER_SIZE;
         total_packets = static_cast<uint32_t>(ceil(static_cast<double>(file_size / MAX_PACKET_SIZE)));
-        file_buffer   = PrepareBuffer(file_buffer, prev_size, file_size);
+        file_buffer   = PrepareBuffer(file_buffer, file_size);
 
         if (nullptr == packet_buffer)
           packet_buffer = new uint8_t[MAX_PACKET_SIZE];
-
         file_buffer_offset = 0;
 
         (m_keep_header) ?
@@ -227,6 +221,8 @@ public:
   }
 
    private:
+    using buffers = std::vector<uint8_t*>;
+
     uint8_t*    file_buffer;
     uint8_t*    packet_buffer;
     uint32_t    index;
@@ -238,6 +234,7 @@ public:
     bool        m_keep_header;
     uint8_t     m_header_size;
     uint32_t    m_id;
+    buffers     m_buffers;
   };
 
   /**
@@ -247,10 +244,10 @@ public:
   FileHandler(FileCallbackFn callback_fn,
               bool           keep_header = false)
   : m_decoder(new Decoder(
-      [callback_fn](uint32_t id, uint8_t*&& data, int size)
+      [callback_fn](uint32_t id, uint8_t* data, size_t size)
       {
         if (size)
-          callback_fn(id, std::move(data), size);
+          callback_fn(id, data, size);
       },
     keep_header))
   {}
