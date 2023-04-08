@@ -9,18 +9,12 @@
 #include <cassert>
 #include <cmath>
 
-namespace Kiqoder {
+namespace kiqoder {
 static const uint32_t MAX_PACKET_SIZE = 4096;
 static const uint8_t  HEADER_SIZE     = 4;
 
 class FileHandler {
 public:
-
-/**
-* File
-*
-* @struct
-*/
 struct File
 {
   uint8_t*  byte_ptr;
@@ -28,24 +22,14 @@ struct File
   bool      complete;
 };
 
-/**
- * Decoder class
- *
- * @class
- *
- * Does the heavy lifting
- *
- */
+//----------------------------------------------
+//------------------Decoder---------------------
+//----------------------------------------------
 using ReceiveFn      = std::function<void(uint32_t, uint8_t*, size_t)>;
 using FileCallbackFn = std::function<void(int32_t, uint8_t*, size_t)>;
 class Decoder
 {
 public:
- /**
-  * Default constructor
-  *
-  * @constructor
-  */
   Decoder(ReceiveFn file_callback_fn_ptr,
           bool      keep_header)
   : file_buffer         (nullptr),
@@ -59,10 +43,7 @@ public:
     m_keep_header       (keep_header),
     m_header_size       (HEADER_SIZE)
     {}
-
-/**
- * @destructor
- */
+  //----------------------------------------------
   ~Decoder()
   {
     if (m_buffers.size())
@@ -76,30 +57,19 @@ public:
       packet_buffer = nullptr;
     }
   }
-
+  //----------------------------------------------
   void setID(uint32_t id)
   {
     m_id = id;
   }
-
-  /**
-   * clearPacketBuffer
-   *
-   * Clear buffer before writing a new packet
-   */
-
+  //----------------------------------------------
   void clearPacketBuffer()
   {
     if (packet_buffer)
       memset(packet_buffer, 0, MAX_PACKET_SIZE);
     packet_buffer_offset = 0;
   }
-
-  /**
-   * reset
-   *
-   * Reset the decoder's state so it's ready to decode a new file
-   */
+  //----------------------------------------------
   void reset()
   {
     index              = 0;
@@ -108,21 +78,14 @@ public:
     file_size          = 0;
     clearPacketBuffer();
   }
-
-  /**
-   * processPacketBuffer
-   *
-   * @param[in] {uint8_t*} `data` A pointer to the beginning of a byte sequence
-   * @param[in] {uint32_t} `size` The number of bytes to process
-   */
-
+  //----------------------------------------------
   uint8_t* PrepareBuffer(uint8_t* ptr, uint32_t new_size)
   {
     if (ptr)
       m_buffers.push_back(ptr);
     return new uint8_t[new_size];
   }
-
+  //----------------------------------------------
   void processPacketBuffer(uint8_t* data, uint32_t size)
   {
           uint32_t bytes_to_finish{}; // current packet
@@ -181,12 +144,7 @@ public:
       }
     }
   }
-  /**
-   * processPacket
-   *
-   * @param[in] {uint8_t*} `data` A pointer to the beginning of a byte sequence
-   * @param[in] {uint32_t} `size` The number of bytes to process
-   */
+  //----------------------------------------------
   void processPacket(uint8_t* data, uint32_t size)
   {
     uint32_t process_index{0};
@@ -237,10 +195,9 @@ public:
     buffers     m_buffers;
   };
 
-  /**
-   * Default constructor
-   * @constructor
-   */
+  //----------------------------------------------
+  //-----------------FileHandler------------------
+  //----------------------------------------------
   FileHandler(FileCallbackFn callback_fn,
               bool           keep_header = false)
   : m_decoder(new Decoder(
@@ -251,26 +208,17 @@ public:
       },
     keep_header))
   {}
-
-  /**
-   * Move&& constructor
-   * @constructor
-   */
+  //----------------------------------------------
   FileHandler(FileHandler&& f)
   : m_decoder(f.m_decoder)
   {
     f.m_decoder = nullptr;
   }
-
-  /**
-   * Copy& constructor
-   * @constructor
-   */
-
+  //----------------------------------------------
   FileHandler(const FileHandler& f)
   : m_decoder(new Decoder{*(f.m_decoder)})
   {}
-
+  //----------------------------------------------
   FileHandler &operator=(const FileHandler& f)
   {
     if (&f != this)
@@ -282,11 +230,7 @@ public:
 
     return *this;
   }
-
-  /**
-   * Assignment operator
-   * @operator
-   */
+  //----------------------------------------------
   FileHandler &operator=(FileHandler &&f)
   {
     if (&f != this)
@@ -298,31 +242,22 @@ public:
 
     return *this;
   }
-
-  /**
-   * @destructor
-   */
+  //----------------------------------------------
   ~FileHandler()
   {
     delete m_decoder;
   }
-
-  /**
-   * setID
-   *
-   * @param id
-   */
+  //----------------------------------------------
   void setID(uint32_t id)
   {
     m_decoder->setID(id);
   }
-
-  /**
-   * processPacket
-   *
-   * @param[in] {uint8_t*} `data`
-   * @param[in] {uint32_t} `size`
-   */
+  //----------------------------------------------
+  void reset()
+  {
+    m_decoder->reset();
+  }
+  //----------------------------------------------
   void processPacket(uint8_t *data, uint32_t size)
   {
     m_decoder->processPacket(data, size);
@@ -331,4 +266,4 @@ public:
  private:
   Decoder* m_decoder;
 };
-} // namespace Decoder
+} // namespace kiqoder
