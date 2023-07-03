@@ -69,6 +69,10 @@ public:
       memset(packet_buffer, 0, MAX_PACKET_SIZE);
     packet_buffer_offset = 0;
   }
+  bool isPending() const
+  {
+    return packet_buffer_offset > 0;
+  }
   //----------------------------------------------
   void reset()
   {
@@ -261,6 +265,11 @@ public:
   void processPacket(uint8_t *data, uint32_t size)
   {
     m_decoder->processPacket(data, size);
+  }
+  //----------------------------------------------
+  bool isPending() const
+  {
+    return m_decoder->isPending();
   }
 
  private:
